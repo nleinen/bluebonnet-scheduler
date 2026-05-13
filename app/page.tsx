@@ -40,7 +40,6 @@ export default function SchedulerApp() {
   return (
     <div 
       className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans text-slate-800 print:bg-white print:p-0 print:m-0"
-      // This style property forces Chrome/Safari/Edge to print the background colors
       style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
     >
       <div className="max-w-5xl mx-auto space-y-6 print:w-full print:max-w-full print:space-y-4">
@@ -201,7 +200,7 @@ export default function SchedulerApp() {
                     )}
                   </div>
 
-                  {/* Services & Notes Section (Pushed to bottom) */}
+                  {/* Services & Notes Section */}
                   <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-3">
                     
                     {/* Services */}
@@ -213,7 +212,7 @@ export default function SchedulerApp() {
                         <button 
                           onClick={() => setEditingId(editingId === visit.id ? null : visit.id)}
                           className="text-slate-400 hover:text-blue-600 transition print:hidden"
-                          title={editingId === visit.id ? "Save Changes" : "Edit Vaccines"}
+                          title={editingId === visit.id ? "Save Changes" : "Edit Details"}
                         >
                           {editingId === visit.id ? <Check size={14} /> : <Edit2 size={14} />}
                         </button>
@@ -236,14 +235,24 @@ export default function SchedulerApp() {
                       )}
                     </div>
 
-                    {/* Notes */}
+                    {/* Notes (Now Editable) */}
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
                         Notes
                       </span>
-                      <div className="text-xs text-slate-600 font-medium">
-                        {visit.notes || '--'}
-                      </div>
+                      {editingId === visit.id ? (
+                        <input 
+                          type="text" 
+                          value={visit.notes || ''}
+                          onChange={(e) => updateVisit(visit.id, 'notes', e.target.value)}
+                          className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none print:hidden"
+                          placeholder="Add clinical notes..."
+                        />
+                      ) : (
+                        <div className="text-xs text-slate-600 font-medium min-h-[1.25rem]">
+                          {visit.notes || '--'}
+                        </div>
+                      )}
                     </div>
 
                   </div>
