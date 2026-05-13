@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { generateSchedule, Visit, Species, BreedSize } from '../lib/scheduler';
-import { Printer, Edit2, Check, ShieldAlert } from 'lucide-react';
+import { Download, Edit2, Check, ShieldAlert } from 'lucide-react';
 
 export default function SchedulerApp() {
   const [dob, setDob] = useState('');
@@ -23,8 +23,25 @@ export default function SchedulerApp() {
     setSchedule(results);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('report-card');
+    if (!element) return;
+
+    // Dynamically import to avoid Next.js server-side rendering errors
+    // @ts-ignore
+    const html2pdf = (await import('html2pdf.js')).default;
+
+    const opt = {
+      margin:       0.3,
+      filename:     `Bluebonnet_Preventive_Care_${species}.pdf`,
+      image:        { type: 'jpeg', quality: 1 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
+      // This forces the engine to try to keep everything on a single page
+      pagebreak:    { mode: 'avoid-all' } 
+    };
+
+    html2pdf().set(opt).from(element).save();
   };
 
   const updateVisit = (id: string, field: keyof Visit, value: any) => {
@@ -38,14 +55,11 @@ export default function SchedulerApp() {
   };
 
   return (
-    <div 
-      className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans text-slate-800 print:bg-white print:p-0 print:m-0"
-      style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}
-    >
-      <div className="max-w-5xl mx-auto space-y-6 print:w-full print:max-w-full print:space-y-4">
+    <div className="min-h-screen bg-slate-100 p-4 md:p-8 font-sans text-slate-800">
+      <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Controls - Hidden during print */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 print:hidden">
+        {/* Controls */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <h1 className="text-2xl font-bold text-slate-900 mb-6">Preventive Care Scheduler</h1>
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -110,161 +124,164 @@ export default function SchedulerApp() {
           </button>
         </div>
 
-        {/* Report Card - Print Optimized */}
+        {/* Report Card - Now Acts as the WYSIWYG PDF Template */}
         {schedule.length > 0 && (
-          <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-200 print:shadow-none print:border-none print:p-0 print:m-0">
+          <div className="relative">
             
-            {/* Screen Header */}
-            <div className="flex justify-between items-start mb-6 border-b pb-4 print:hidden">
-              <div>
-                <h2 className="text-3xl font-bold text-slate-900">Preventive Care Report Card</h2>
-                <p className="text-slate-500 mt-1 font-medium">Bluebonnet Animal Hospital</p>
-              </div>
+            {/* Floating Action Button for Download (Hidden from PDF) */}
+            <div className="absolute top-4 right-4 z-10" data-html2canvas-ignore="true">
               <button 
-                onClick={handlePrint}
-                className="flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md transition font-medium"
               >
-                <Printer size={18} /> Print Document
+                <Download size={18} /> Download PDF
               </button>
             </div>
 
-            {/* Print-Only Header (Compact) */}
-            <div className="hidden print:block text-center border-b-2 border-slate-800 pb-3 mb-4 mt-2">
-              <h1 className="text-2xl font-extrabold text-blue-800 uppercase tracking-widest">Bluebonnet Animal Hospital</h1>
-              <p className="text-sm text-slate-600 font-medium mt-1 uppercase tracking-widest">Optimal Preventive Care Schedule</p>
-            </div>
-
-            {/* Patient Information Summary Row */}
-            <div className="flex justify-between bg-slate-100 p-3 rounded-lg mb-4 border border-slate-200 print:bg-slate-50">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-500">Patient Species</span>
-                <p className="font-semibold text-slate-900 text-sm md:text-base">{species}</p>
+            {/* The Actual Element Being Captured */}
+            <div id="report-card" className="bg-white p-8 rounded-xl shadow-lg border border-slate-200">
+              
+              {/* Formal Header */}
+              <div className="text-center border-b-2 border-slate-800 pb-4 mb-6 pt-4">
+                <h1 className="text-3xl font-extrabold text-blue-800 uppercase tracking-widest">Bluebonnet Animal Hospital</h1>
+                <p className="text-sm text-slate-600 font-medium mt-1 uppercase tracking-widest">Optimal Preventive Care Schedule</p>
               </div>
-              {species === 'Dog' && (
+
+              {/* Patient Information Summary Row */}
+              <div className="flex justify-between bg-slate-50 p-4 rounded-lg mb-6 border border-slate-200">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500">Expected Adult Size</span>
-                  <p className="font-semibold text-slate-900 text-sm md:text-base">{breedSize} Breed</p>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Patient Species</span>
+                  <p className="font-semibold text-slate-900">{species}</p>
                 </div>
-              )}
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-500">Date of Birth</span>
-                <p className="font-semibold text-slate-900 text-sm md:text-base">{formatDateForHeader(dob)}</p>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-500">Initial Visit</span>
-                <p className="font-semibold text-slate-900 text-sm md:text-base">{formatDateForHeader(firstVisit)}</p>
-              </div>
-            </div>
-
-            {/* Strict Scheduling Warning Box */}
-            <div className="bg-amber-100 border-l-4 border-amber-500 p-3 mb-4 rounded-r-lg">
-              <div className="flex items-start gap-2 md:gap-3">
-                <ShieldAlert className="text-amber-600 mt-0.5 shrink-0" size={18} />
-                <p className="text-amber-900 text-xs md:text-sm font-medium">
-                  <strong className="uppercase">Important Clinical Guideline:</strong> To ensure optimal immune system development and prevent restarting the vaccine series, please schedule your booster visits strictly within <strong>+/- 3 days</strong> of the exact target dates listed below.
-                </p>
-              </div>
-            </div>
-
-            {/* Schedule List - TWO COLUMN GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2 print:gap-4">
-              {schedule.map((visit, index) => (
-                <div 
-                  key={visit.id} 
-                  className="flex flex-col p-4 rounded-xl bg-slate-50 border border-slate-200 print:break-inside-avoid print:bg-slate-50 print:border-slate-300"
-                >
-                  {/* Card Header */}
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      {visit.id === 'sx' ? 'Surgery Timeline' : `Visit ${index + 1}`}
-                    </span>
-                    <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      {visit.ageDisplay} Old
-                    </span>
+                {species === 'Dog' && (
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Expected Adult Size</span>
+                    <p className="font-semibold text-slate-900">{breedSize} Breed</p>
                   </div>
+                )}
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Date of Birth</span>
+                  <p className="font-semibold text-slate-900">{formatDateForHeader(dob)}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Initial Visit</span>
+                  <p className="font-semibold text-slate-900">{formatDateForHeader(firstVisit)}</p>
+                </div>
+              </div>
 
-                  {/* Date */}
-                  <div className="font-bold text-lg md:text-xl text-blue-700 leading-tight mb-2">
-                    {visit.formattedDate}
-                  </div>
-                  
-                  {/* Warning Badge */}
-                  <div className="h-8 mb-2">
-                    {visit.isBooster && (
-                      <div className="inline-flex items-center gap-1.5 p-1 px-2 bg-amber-100 border border-amber-300 rounded text-amber-900">
-                        <span className="text-[9px] uppercase font-bold tracking-widest leading-none mt-0.5">Note:</span>
-                        <span className="text-[11px] font-semibold leading-tight">
-                          Schedule within +/- 3 days
-                        </span>
-                      </div>
-                    )}
-                  </div>
+              {/* Strict Scheduling Warning Box */}
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded-r-lg">
+                <div className="flex items-start gap-3">
+                  <ShieldAlert className="text-amber-600 mt-0.5 shrink-0" size={20} />
+                  <p className="text-amber-900 text-sm font-medium">
+                    <strong className="uppercase">Important Clinical Guideline:</strong> To ensure optimal immune system development and prevent restarting the vaccine series, please schedule your booster visits strictly within <strong>+/- 3 days</strong> of the exact target dates listed below.
+                  </p>
+                </div>
+              </div>
 
-                  {/* Services & Notes Section */}
-                  <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-3">
-                    
-                    {/* Services */}
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          Services & Immunizations
-                        </span>
-                        <button 
-                          onClick={() => setEditingId(editingId === visit.id ? null : visit.id)}
-                          className="text-slate-400 hover:text-blue-600 transition print:hidden"
-                          title={editingId === visit.id ? "Save Changes" : "Edit Details"}
-                        >
-                          {editingId === visit.id ? <Check size={14} /> : <Edit2 size={14} />}
-                        </button>
-                      </div>
-
-                      {editingId === visit.id ? (
-                        <input 
-                          type="text" 
-                          value={visit.vaccines.join(', ')}
-                          onChange={(e) => updateVisit(visit.id, 'vaccines', e.target.value.split(',').map(s => s.trim()))}
-                          className="w-full p-1.5 border border-slate-300 rounded bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none print:hidden"
-                          placeholder="Comma separated vaccines"
-                        />
-                      ) : (
-                        <div className="font-semibold text-slate-900 text-sm">
-                          {visit.vaccines.length > 0 
-                            ? visit.vaccines.join(' • ') 
-                            : 'Consultation & Scheduling'}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Notes (Now Editable) */}
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
-                        Notes
+              {/* Schedule List - TWO COLUMN GRID */}
+              <div className="grid grid-cols-2 gap-4">
+                {schedule.map((visit, index) => (
+                  <div 
+                    key={visit.id} 
+                    className="flex flex-col p-4 rounded-xl bg-slate-50 border border-slate-200"
+                  >
+                    {/* Card Header */}
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        {visit.id === 'sx' ? 'Surgery Timeline' : `Visit ${index + 1}`}
                       </span>
-                      {editingId === visit.id ? (
-                        <input 
-                          type="text" 
-                          value={visit.notes || ''}
-                          onChange={(e) => updateVisit(visit.id, 'notes', e.target.value)}
-                          className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none print:hidden"
-                          placeholder="Add clinical notes..."
-                        />
-                      ) : (
-                        <div className="text-xs text-slate-600 font-medium min-h-[1.25rem]">
-                          {visit.notes || '--'}
+                      <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        {visit.ageDisplay} Old
+                      </span>
+                    </div>
+
+                    {/* Date */}
+                    <div className="font-bold text-xl text-blue-700 leading-tight mb-2">
+                      {visit.formattedDate}
+                    </div>
+                    
+                    {/* Warning Badge */}
+                    <div className="h-8 mb-2">
+                      {visit.isBooster && (
+                        <div className="inline-flex items-center gap-1.5 p-1 px-2 bg-amber-100 border border-amber-300 rounded text-amber-900">
+                          <span className="text-[9px] uppercase font-bold tracking-widest leading-none mt-0.5">Note:</span>
+                          <span className="text-[11px] font-semibold leading-tight">
+                            Schedule within +/- 3 days
+                          </span>
                         </div>
                       )}
                     </div>
 
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Print Footer */}
-            <div className="hidden print:block mt-6 text-center text-[10px] font-medium text-slate-500 uppercase tracking-widest">
-              Generated by Bluebonnet Animal Hospital System • {new Date().toLocaleDateString()}
-            </div>
+                    {/* Services & Notes Section */}
+                    <div className="mt-auto flex flex-col gap-3 border-t border-slate-200 pt-3">
+                      
+                      {/* Services */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            Services & Immunizations
+                          </span>
+                          <button 
+                            onClick={() => setEditingId(editingId === visit.id ? null : visit.id)}
+                            className="text-slate-400 hover:text-blue-600 transition"
+                            title={editingId === visit.id ? "Save Changes" : "Edit Details"}
+                            data-html2canvas-ignore="true" // Hides the edit button from the PDF
+                          >
+                            {editingId === visit.id ? <Check size={14} /> : <Edit2 size={14} />}
+                          </button>
+                        </div>
 
+                        {editingId === visit.id ? (
+                          <input 
+                            type="text" 
+                            value={visit.vaccines.join(', ')}
+                            onChange={(e) => updateVisit(visit.id, 'vaccines', e.target.value.split(',').map(s => s.trim()))}
+                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Comma separated vaccines"
+                            data-html2canvas-ignore="true" // Hide input field from PDF if accidentally left open
+                          />
+                        ) : (
+                          <div className="font-semibold text-slate-900 text-sm">
+                            {visit.vaccines.length > 0 
+                              ? visit.vaccines.join(' • ') 
+                              : 'Consultation & Scheduling'}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
+                          Notes
+                        </span>
+                        {editingId === visit.id ? (
+                          <input 
+                            type="text" 
+                            value={visit.notes || ''}
+                            onChange={(e) => updateVisit(visit.id, 'notes', e.target.value)}
+                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            placeholder="Add clinical notes..."
+                            data-html2canvas-ignore="true"
+                          />
+                        ) : (
+                          <div className="text-xs text-slate-600 font-medium min-h-[1.25rem]">
+                            {visit.notes || '--'}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Print Footer */}
+              <div className="mt-8 text-center text-[10px] font-medium text-slate-500 uppercase tracking-widest">
+                Generated by Bluebonnet Animal Hospital System • {new Date().toLocaleDateString()}
+              </div>
+
+            </div>
           </div>
         )}
       </div>
