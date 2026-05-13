@@ -27,21 +27,45 @@ export default function SchedulerApp() {
     const element = document.getElementById('report-card');
     if (!element) return;
 
-    // Dynamically import to avoid Next.js server-side rendering errors
-    // @ts-ignore
-    const html2pdf = (await import('html2pdf.js')).default;
+    // 1. Temporarily hide the interactive UI elements (Edit buttons, inputs)
+    const elementsToHide = element.querySelectorAll('.hide-in-pdf');
+    elementsToHide.forEach((el) => ((el as HTMLElement).style.display = 'none'));
 
-    const opt = {
-      margin:       0.3,
-      filename:     `Bluebonnet_Preventive_Care_${species}.pdf`,
-      image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-      // This forces the engine to try to keep everything on a single page
-      pagebreak:    { mode: 'avoid-all' } 
-    };
+    try {
+      // Dynamically import to prevent Next.js server-side rendering issues
+      const { toPng } = await import('html-to-image');
+      const { jsPDF } = await import('jspdf');
 
-    html2pdf().set(opt).from(element).save();
+      // 2. Take a high-quality snapshot using the browser's native rendering
+      const dataUrl = await toPng(element, { 
+        quality: 1, 
+        pixelRatio: 2,
+        backgroundColor: '#ffffff' 
+      });
+
+      // 3. Generate the PDF
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'in',
+        format: 'letter'
+      });
+
+      // Calculate perfect scaling for an 8.5x11 page with a 0.3-inch margin
+      const margin = 0.3;
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = 8.5 - (margin * 2);
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, 'PNG', margin, margin, pdfWidth, pdfHeight);
+      pdf.save(`Bluebonnet_Preventive_Care_${species}.pdf`);
+
+    } catch (error) {
+      console.error('Failed to generate PDF', error);
+      alert('There was an error generating the PDF. Check the console.');
+    } finally {
+      // 4. Always restore the UI elements, even if the download fails
+      elementsToHide.forEach((el) => ((el as HTMLElement).style.display = ''));
+    }
   };
 
   const updateVisit = (id: string, field: keyof Visit, value: any) => {
@@ -124,12 +148,12 @@ export default function SchedulerApp() {
           </button>
         </div>
 
-        {/* Report Card - Now Acts as the WYSIWYG PDF Template */}
+        {/* Report Card */}
         {schedule.length > 0 && (
           <div className="relative">
             
-            {/* Floating Action Button for Download (Hidden from PDF) */}
-            <div className="absolute top-4 right-4 z-10" data-html2canvas-ignore="true">
+            {/* Floating Action Button for Download */}
+            <div className="absolute top-4 right-4 z-10 hide-in-pdf">
               <button 
                 onClick={handleDownloadPDF}
                 className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-md transition font-medium"
@@ -224,9 +248,8 @@ export default function SchedulerApp() {
                           </span>
                           <button 
                             onClick={() => setEditingId(editingId === visit.id ? null : visit.id)}
-                            className="text-slate-400 hover:text-blue-600 transition"
+                            className="text-slate-400 hover:text-blue-600 transition hide-in-pdf"
                             title={editingId === visit.id ? "Save Changes" : "Edit Details"}
-                            data-html2canvas-ignore="true" // Hides the edit button from the PDF
                           >
                             {editingId === visit.id ? <Check size={14} /> : <Edit2 size={14} />}
                           </button>
@@ -237,9 +260,8 @@ export default function SchedulerApp() {
                             type="text" 
                             value={visit.vaccines.join(', ')}
                             onChange={(e) => updateVisit(visit.id, 'vaccines', e.target.value.split(',').map(s => s.trim()))}
-                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none hide-in-pdf"
                             placeholder="Comma separated vaccines"
-                            data-html2canvas-ignore="true" // Hide input field from PDF if accidentally left open
                           />
                         ) : (
                           <div className="font-semibold text-slate-900 text-sm">
@@ -260,9 +282,8 @@ export default function SchedulerApp() {
                             type="text" 
                             value={visit.notes || ''}
                             onChange={(e) => updateVisit(visit.id, 'notes', e.target.value)}
-                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none hide-in-pdf"
                             placeholder="Add clinical notes..."
-                            data-html2canvas-ignore="true"
                           />
                         ) : (
                           <div className="text-xs text-slate-600 font-medium min-h-[1.25rem]">
