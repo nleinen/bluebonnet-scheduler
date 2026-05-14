@@ -91,7 +91,8 @@ export default function SchedulerApp() {
               className="h-auto max-h-14 w-auto max-w-[280px] object-contain"
             />
             <div className="hidden md:block h-8 w-px bg-slate-300 mx-2"></div>
-            <h1 className="text-2xl font-bold text-slate-900">Preventive Care Scheduler</h1>
+            {/* Optimized title color: text-blue-800 */}
+            <h1 className="text-2xl font-bold text-blue-800">Preventive Care Scheduler</h1>
           </div>
           
           {/* Expanded to grid-cols-5 to fit Pet's Name */}
@@ -194,7 +195,8 @@ export default function SchedulerApp() {
                   alt="Bluebonnet Animal Hospital Logo" 
                   className="h-auto max-h-20 w-auto max-w-[350px] object-contain mb-2"
                 />
-                <p className="text-sm text-slate-600 font-bold mt-1 uppercase tracking-widest">
+                {/* Optimized title color: text-blue-800 */}
+                <p className="text-sm text-blue-800 font-bold mt-1 uppercase tracking-widest">
                   Optimal Preventive Care Schedule
                 </p>
               </div>
