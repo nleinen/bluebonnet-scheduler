@@ -2,22 +2,46 @@
 
 import { useState } from 'react';
 import { generateSchedule, Visit, Species, BreedSize } from '../lib/scheduler';
-import { Download, Edit2, Check, ShieldAlert } from 'lucide-react';
+import { Download, Edit2, Check, ShieldAlert, AlertCircle } from 'lucide-react';
+import { differenceInWeeks } from 'date-fns';
+
+// Helper to get today's date in YYYY-MM-DD format based on the user's local timezone
+function getTodayLocalString() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function SchedulerApp() {
   const [petName, setPetName] = useState('');
   const [dob, setDob] = useState('');
-  const [firstVisit, setFirstVisit] = useState('');
+  // Initializes to today's date automatically
+  const [firstVisit, setFirstVisit] = useState(getTodayLocalString());
   const [species, setSpecies] = useState<Species>('Dog');
   const [breedSize, setBreedSize] = useState<BreedSize>('Small');
   const [schedule, setSchedule] = useState<Visit[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = () => {
     if (!dob || !firstVisit) return;
+    setError(null); // Clear any previous errors
+
+    const dateOfBirth = new Date(dob + 'T12:00:00');
+    const dateOfFirstVisit = new Date(firstVisit + 'T12:00:00');
+
+    // Clinical Safeguard: Check if patient is at least 6 weeks old
+    if (differenceInWeeks(dateOfFirstVisit, dateOfBirth) < 6) {
+      setError("Clinical Warning: Patients must be at least 6 weeks of age at the time of their first visit to safely begin the vaccination series.");
+      setSchedule([]); // Clear any existing schedule
+      return;
+    }
+
     const results = generateSchedule(
-      new Date(dob + 'T12:00:00'), 
-      new Date(firstVisit + 'T12:00:00'), 
+      dateOfBirth, 
+      dateOfFirstVisit, 
       species, 
       breedSize
     );
@@ -54,12 +78,11 @@ export default function SchedulerApp() {
 
       pdf.addImage(dataUrl, 'PNG', margin, margin, pdfWidth, pdfHeight);
       
-      // Clean up the pet's name for a safe file name, or fallback to species
       const safeName = petName ? petName.trim().replace(/[^a-zA-Z0-9]/g, '_') : species;
       pdf.save(`Bluebonnet_Preventive_Care_${safeName}.pdf`);
 
-    } catch (error) {
-      console.error('Failed to generate PDF', error);
+    } catch (err) {
+      console.error('Failed to generate PDF', err);
       alert('There was an error generating the PDF. Check the console.');
     } finally {
       elementsToHide.forEach((el) => ((el as HTMLElement).style.display = ''));
@@ -91,14 +114,12 @@ export default function SchedulerApp() {
               className="h-auto max-h-14 w-auto max-w-[280px] object-contain"
             />
             <div className="hidden md:block h-8 w-px bg-slate-300 mx-2"></div>
-            {/* Optimized title color: text-blue-800 */}
             <h1 className="text-2xl font-bold text-blue-800">Preventive Care Scheduler</h1>
           </div>
           
           {/* Expanded to grid-cols-5 to fit Pet's Name */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
             
-            {/* New Pet Name Field */}
             <div>
               <label className="block text-sm font-medium mb-1 text-slate-700">Pet's Name</label>
               <input 
@@ -147,7 +168,10 @@ export default function SchedulerApp() {
                 type="date" 
                 className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={dob} 
-                onChange={(e) => setDob(e.target.value)} 
+                onChange={(e) => {
+                  setDob(e.target.value);
+                  setError(null); 
+                }} 
               />
             </div>
 
@@ -157,10 +181,21 @@ export default function SchedulerApp() {
                 type="date" 
                 className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={firstVisit} 
-                onChange={(e) => setFirstVisit(e.target.value)} 
+                onChange={(e) => {
+                  setFirstVisit(e.target.value);
+                  setError(null); 
+                }} 
               />
             </div>
           </div>
+
+          {/* Age Validation Error Message */}
+          {error && (
+            <div className="flex items-start gap-2 bg-red-50 border-l-4 border-red-500 p-3 mb-6 rounded-r-lg text-red-800 text-sm font-medium">
+              <AlertCircle className="shrink-0 mt-0.5" size={18} />
+              <p>{error}</p>
+            </div>
+          )}
 
           <button 
             onClick={handleGenerate}
@@ -172,7 +207,7 @@ export default function SchedulerApp() {
         </div>
 
         {/* Report Card */}
-        {schedule.length > 0 && (
+        {schedule.length > 0 && !error && (
           <div className="relative">
             
             {/* Floating Action Button for Download */}
@@ -195,7 +230,6 @@ export default function SchedulerApp() {
                   alt="Bluebonnet Animal Hospital Logo" 
                   className="h-auto max-h-20 w-auto max-w-[350px] object-contain mb-2"
                 />
-                {/* Optimized title color: text-blue-800 */}
                 <p className="text-sm text-blue-800 font-bold mt-1 uppercase tracking-widest">
                   Optimal Preventive Care Schedule
                 </p>
