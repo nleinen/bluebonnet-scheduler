@@ -5,6 +5,7 @@ import { generateSchedule, Visit, Species, BreedSize } from '../lib/scheduler';
 import { Download, Edit2, Check, ShieldAlert } from 'lucide-react';
 
 export default function SchedulerApp() {
+  const [petName, setPetName] = useState('');
   const [dob, setDob] = useState('');
   const [firstVisit, setFirstVisit] = useState('');
   const [species, setSpecies] = useState<Species>('Dog');
@@ -27,43 +28,40 @@ export default function SchedulerApp() {
     const element = document.getElementById('report-card');
     if (!element) return;
 
-    // 1. Temporarily hide the interactive UI elements (Edit buttons, inputs)
     const elementsToHide = element.querySelectorAll('.hide-in-pdf');
     elementsToHide.forEach((el) => ((el as HTMLElement).style.display = 'none'));
 
     try {
-      // Dynamically import to prevent Next.js server-side rendering issues
       const { toPng } = await import('html-to-image');
       const { jsPDF } = await import('jspdf');
 
-      // 2. Take a high-quality snapshot using the browser's native rendering
       const dataUrl = await toPng(element, { 
         quality: 1, 
         pixelRatio: 2,
         backgroundColor: '#ffffff' 
       });
 
-      // 3. Generate the PDF
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'in',
         format: 'letter'
       });
 
-      // Calculate perfect scaling for an 8.5x11 page with a 0.3-inch margin
       const margin = 0.3;
       const imgProps = pdf.getImageProperties(dataUrl);
       const pdfWidth = 8.5 - (margin * 2);
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
       pdf.addImage(dataUrl, 'PNG', margin, margin, pdfWidth, pdfHeight);
-      pdf.save(`Bluebonnet_Preventive_Care_${species}.pdf`);
+      
+      // Clean up the pet's name for a safe file name, or fallback to species
+      const safeName = petName ? petName.trim().replace(/[^a-zA-Z0-9]/g, '_') : species;
+      pdf.save(`Bluebonnet_Preventive_Care_${safeName}.pdf`);
 
     } catch (error) {
       console.error('Failed to generate PDF', error);
       alert('There was an error generating the PDF. Check the console.');
     } finally {
-      // 4. Always restore the UI elements, even if the download fails
       elementsToHide.forEach((el) => ((el as HTMLElement).style.display = ''));
     }
   };
@@ -84,9 +82,33 @@ export default function SchedulerApp() {
         
         {/* Controls */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h1 className="text-2xl font-bold text-slate-900 mb-6">Preventive Care Scheduler</h1>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {/* Logo added to the web UI header - Autosized */}
+          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 border-b pb-4">
+            <img 
+              src="/Bluebonnet-Logo.jpg" 
+              alt="Bluebonnet Animal Hospital Logo" 
+              className="h-auto max-h-14 w-auto max-w-[280px] object-contain"
+            />
+            <div className="hidden md:block h-8 w-px bg-slate-300 mx-2"></div>
+            <h1 className="text-2xl font-bold text-slate-900">Preventive Care Scheduler</h1>
+          </div>
+          
+          {/* Expanded to grid-cols-5 to fit Pet's Name */}
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            
+            {/* New Pet Name Field */}
+            <div>
+              <label className="block text-sm font-medium mb-1 text-slate-700">Pet's Name</label>
+              <input 
+                type="text" 
+                className="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={petName} 
+                onChange={(e) => setPetName(e.target.value)} 
+                placeholder="e.g. Leo"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium mb-1 text-slate-700">Species</label>
               <select 
@@ -112,7 +134,7 @@ export default function SchedulerApp() {
                 </select>
               </div>
             ) : (
-              <div>
+              <div className="hidden lg:block">
                 <label className="block text-sm font-medium mb-1 opacity-0">Spacer</label>
                 <div className="w-full p-2 bg-transparent"></div>
               </div>
@@ -165,16 +187,26 @@ export default function SchedulerApp() {
             {/* The Actual Element Being Captured */}
             <div id="report-card" className="bg-white p-8 rounded-xl shadow-lg border border-slate-200">
               
-              {/* Formal Header */}
-              <div className="text-center border-b-2 border-slate-800 pb-4 mb-6 pt-4">
-                <h1 className="text-3xl font-extrabold text-blue-800 uppercase tracking-widest">Bluebonnet Animal Hospital</h1>
-                <p className="text-sm text-slate-600 font-medium mt-1 uppercase tracking-widest">Optimal Preventive Care Schedule</p>
+              {/* Formal PDF Header with Autosized Logo */}
+              <div className="flex flex-col items-center border-b-2 border-slate-800 pb-4 mb-6 pt-4">
+                <img 
+                  src="/Bluebonnet-Logo.jpg" 
+                  alt="Bluebonnet Animal Hospital Logo" 
+                  className="h-auto max-h-20 w-auto max-w-[350px] object-contain mb-2"
+                />
+                <p className="text-sm text-slate-600 font-bold mt-1 uppercase tracking-widest">
+                  Optimal Preventive Care Schedule
+                </p>
               </div>
 
               {/* Patient Information Summary Row */}
               <div className="flex justify-between bg-slate-50 p-4 rounded-lg mb-6 border border-slate-200">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500">Patient Species</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Pet Name</span>
+                  <p className="font-semibold text-slate-900">{petName || 'Not specified'}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Species</span>
                   <p className="font-semibold text-slate-900">{species}</p>
                 </div>
                 {species === 'Dog' && (
@@ -198,7 +230,7 @@ export default function SchedulerApp() {
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="text-amber-600 mt-0.5 shrink-0" size={20} />
                   <p className="text-amber-900 text-sm font-medium">
-                    <strong className="uppercase">Important Clinical Guideline:</strong> To ensure optimal immune system development and prevent restarting the vaccine series, please schedule your booster visits strictly within <strong>+/- 3 days</strong> of the exact target dates listed below.
+                    <strong className="uppercase">Important Clinical Guideline:</strong> For optimal immune system development and to prevent restarting the vaccine series, please schedule your booster visits strictly within <strong>+/- 3 days</strong> of the exact target dates listed below.
                   </p>
                 </div>
               </div>
@@ -299,7 +331,7 @@ export default function SchedulerApp() {
               
               {/* Print Footer */}
               <div className="mt-8 text-center text-[10px] font-medium text-slate-500 uppercase tracking-widest">
-                Generated by Bluebonnet Animal Hospital System • {new Date().toLocaleDateString()}
+                Generated by Bluebonnet Animal Hospital • {new Date().toLocaleDateString()}
               </div>
 
             </div>
