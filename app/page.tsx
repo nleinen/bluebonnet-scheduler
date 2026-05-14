@@ -86,7 +86,7 @@ export default function SchedulerApp() {
           {/* Logo added to the web UI header - Autosized */}
           <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6 border-b pb-4">
             <img 
-              src="/Bluebonnet-Logo.jpg" 
+              src="/bluebonnet-logo.jpg" 
               alt="Bluebonnet Animal Hospital Logo" 
               className="h-auto max-h-14 w-auto max-w-[280px] object-contain"
             />
@@ -190,7 +190,7 @@ export default function SchedulerApp() {
               {/* Formal PDF Header with Autosized Logo */}
               <div className="flex flex-col items-center border-b-2 border-slate-800 pb-4 mb-6 pt-4">
                 <img 
-                  src="/Bluebonnet-Logo.jpg" 
+                  src="/bluebonnet-logo.jpg" 
                   alt="Bluebonnet Animal Hospital Logo" 
                   className="h-auto max-h-20 w-auto max-w-[350px] object-contain mb-2"
                 />
